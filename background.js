@@ -160,5 +160,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         cachedScanResults = null;
         lastScanTime = null;
         sendResponse({ success: true });
+    } else if (request.action === 'clearBadge') {
+        clearBadge();
+        sendResponse({ success: true });
     }
 });

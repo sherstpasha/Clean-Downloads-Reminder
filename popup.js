@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load saved settings
     loadSettings();
 
+    // Check for cached results from background scan
+    checkBackgroundScanResults();
+
     // Save settings when changed with validation
     timeValue.addEventListener('change', function() {
         validateAndSaveSettings(this, 1, 999);
@@ -240,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         chrome.downloads.search({}, function(downloads) {
             if (chrome.runtime.lastError) {
-                console.error('Error searching downloads:', chrome.runtime.lastError);
+                console.error('Error searching downloads:', chrome.runtime.lastError.message || chrome.runtime.lastError);
                 scanButton.classList.remove('scanning');
                 btnText.textContent = 'Refresh Scan';
                 spinner.classList.add('hidden');
@@ -489,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 chrome.downloads.removeFile(fileId, function() {
                     if (chrome.runtime.lastError) {
-                        console.error('Error removing file:', chrome.runtime.lastError);
+                        // File might already be removed or not accessible, this is normal
                         if (row) row.style.opacity = '1';
                         // Still count as processed to avoid hanging
                         deletedCount++;
@@ -501,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     chrome.downloads.erase({id: fileId}, function() {
                         if (chrome.runtime.lastError) {
-                            console.error('Error erasing file from history:', chrome.runtime.lastError);
+                            // File might already be erased or not accessible, this is normal
                             if (row) row.style.opacity = '1';
                             // Still count as processed to avoid hanging
                             deletedCount++;
@@ -623,6 +626,32 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Сохраняем настройки после валидации
         saveSettings();
+    }
+
+    function checkBackgroundScanResults() {
+        chrome.runtime.sendMessage({ action: 'getCachedResults' }, (response) => {
+            if (response && response.results && response.timestamp) {
+                const cacheAge = Date.now() - response.timestamp;
+                const maxCacheAge = 30 * 60 * 1000; // 30 minutes - longer than scan cache
+                
+                if (cacheAge < maxCacheAge) {
+                    // Show cached results from background scan
+                    displayScanResult(response.results.length);
+                    displayOldFiles(response.results);
+                    
+                    // Show that this is from background scan
+                    const cacheAgeMinutes = Math.floor(cacheAge / (60 * 1000));
+                    if (response.results.length > 0) {
+                        const resultElement = document.getElementById('scan-result');
+                        if (resultElement && cacheAgeMinutes > 0) {
+                            resultElement.innerHTML += ` <span style="font-size: 11px; opacity: 0.7;">(auto-scanned ${cacheAgeMinutes}m ago)</span>`;
+                        } else if (resultElement) {
+                            resultElement.innerHTML += ` <span style="font-size: 11px; opacity: 0.7;">(auto-scanned)</span>`;
+                        }
+                    }
+                }
+            }
+        });
     }
 
     // Clear badge when popup opens (user is now aware of files)
