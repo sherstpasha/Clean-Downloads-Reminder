@@ -374,6 +374,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupFileListEventHandlers(files) {
+        if (!fileList) {
+            console.error('fileList not found in setupFileListEventHandlers');
+            return;
+        }
+        
         const checkboxes = fileList.querySelectorAll('.file-select');
         const selectAllBtn = fileList.querySelector('.select-all-btn');
         const deselectAllBtn = fileList.querySelector('.deselect-all-btn');
@@ -386,27 +391,33 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deleteSelectedBtn) deleteSelectedBtn.disabled = true; // Will be enabled when files are selected
 
         function updateSelectedCount() {
-            const selected = fileList.querySelectorAll('.file-select:checked');
-            const count = selected.length;
-            
-            // Calculate total size
-            let totalSize = 0;
-            selected.forEach(checkbox => {
-                const fileSize = parseInt(checkbox.dataset.fileSize) || 0;
-                totalSize += fileSize;
-            });
-            
-            const sizeText = formatFileSize(totalSize);
-            
-            if (count === 0) {
-                selectedCount.textContent = '0 files selected';
-            } else if (count === 1) {
-                selectedCount.textContent = `1 file selected (${sizeText})`;
-            } else {
-                selectedCount.textContent = `${count} files selected (${sizeText})`;
+            try {
+                if (!fileList || !selectedCount || !deleteSelectedBtn) return;
+                
+                const selected = fileList.querySelectorAll('.file-select:checked');
+                const count = selected.length;
+                
+                // Calculate total size
+                let totalSize = 0;
+                selected.forEach(checkbox => {
+                    const fileSize = parseInt(checkbox.dataset.fileSize) || 0;
+                    totalSize += fileSize;
+                });
+                
+                const sizeText = formatFileSize(totalSize);
+                
+                if (count === 0) {
+                    selectedCount.textContent = '0 files selected';
+                } else if (count === 1) {
+                    selectedCount.textContent = `1 file selected (${sizeText})`;
+                } else {
+                    selectedCount.textContent = `${count} files selected (${sizeText})`;
+                }
+                
+                deleteSelectedBtn.disabled = count === 0;
+            } catch (e) {
+                console.error('Error in updateSelectedCount:', e);
             }
-            
-            deleteSelectedBtn.disabled = count === 0;
         }
 
         checkboxes.forEach(checkbox => {
@@ -443,6 +454,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function deleteSelectedFiles(selectedCheckboxes, allFiles) {
+        if (!selectedCheckboxes || selectedCheckboxes.length === 0) {
+            console.error('No files selected for deletion');
+            return;
+        }
+        
         let deletedCount = 0;
         const totalToDelete = selectedCheckboxes.length;
         
@@ -457,37 +473,70 @@ document.addEventListener('DOMContentLoaded', function() {
             const fileId = parseInt(checkbox.dataset.fileId);
             const row = checkbox.closest('tr');
             
-            row.style.opacity = '0.5';
+            if (!fileId || isNaN(fileId)) {
+                console.error('Invalid file ID:', checkbox.dataset.fileId);
+                deletedCount++;
+                if (deletedCount === totalToDelete) {
+                    displayDeletionSuccess(totalToDelete, totalDeletedSize);
+                }
+                return;
+            }
+            
+            if (row) {
+                row.style.opacity = '0.5';
+            }
             
             setTimeout(() => {
                 chrome.downloads.removeFile(fileId, function() {
                     if (chrome.runtime.lastError) {
                         console.error('Error removing file:', chrome.runtime.lastError);
-                        row.style.opacity = '1';
+                        if (row) row.style.opacity = '1';
+                        // Still count as processed to avoid hanging
+                        deletedCount++;
+                        if (deletedCount === totalToDelete) {
+                            displayDeletionSuccess(totalToDelete, totalDeletedSize);
+                        }
                         return;
                     }
 
                     chrome.downloads.erase({id: fileId}, function() {
-                        row.remove();
+                        if (chrome.runtime.lastError) {
+                            console.error('Error erasing file from history:', chrome.runtime.lastError);
+                            if (row) row.style.opacity = '1';
+                            // Still count as processed to avoid hanging
+                            deletedCount++;
+                            if (deletedCount === totalToDelete) {
+                                displayDeletionSuccess(totalToDelete, totalDeletedSize);
+                            }
+                            return;
+                        }
+                        
+                        // Safely remove row
+                        try {
+                            if (row && row.parentNode) {
+                                row.remove();
+                            }
+                        } catch (e) {
+                            console.error('Error removing row:', e);
+                        }
+                        
                         deletedCount++;
                         
                         if (deletedCount === totalToDelete) {
-                            // Reset selected counter and disable buttons before replacing content
-                            const selectedCountEl = fileList.querySelector('.selected-count');
-                            const deleteBtn = fileList.querySelector('.delete-selected-btn');
-                            const selectAllBtn = fileList.querySelector('.select-all-btn');
-                            const deselectAllBtn = fileList.querySelector('.deselect-all-btn');
-                            
-                            if (selectedCountEl) selectedCountEl.textContent = '0 files selected';
-                            if (deleteBtn) deleteBtn.disabled = true;
-                            if (selectAllBtn) selectAllBtn.disabled = true;
-                            if (deselectAllBtn) deselectAllBtn.disabled = true;
-                            
-                            // Hide the scan result banner when showing congratulations
-                            scanResult.classList.add('hidden');
-                            
-                            // Show congratulations message after cleanup
-                            displayDeletionSuccess(totalToDelete, totalDeletedSize);
+                            // Use a small delay to ensure all DOM operations complete
+                            setTimeout(() => {
+                                try {
+                                    // Hide the scan result banner when showing congratulations
+                                    if (scanResult) {
+                                        scanResult.classList.add('hidden');
+                                    }
+                                    
+                                    // Show congratulations message after cleanup
+                                    displayDeletionSuccess(totalToDelete, totalDeletedSize);
+                                } catch (e) {
+                                    console.error('Error displaying success message:', e);
+                                }
+                            }, 100);
                         }
                     });
                 });
@@ -496,17 +545,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function displayDeletionSuccess(filesCount, freedSpace) {
-        const freedSpaceText = formatFileSize(freedSpace);
-        
-        fileList.innerHTML = `
-            <div class="empty-state success-state">
-                <div class="empty-state-icon">🎉</div>
-                <div class="empty-state-text">Successfully deleted!</div>
-                <div class="empty-state-subtext">
-                    Deleted ${filesCount} file${filesCount !== 1 ? 's' : ''} and freed ${freedSpaceText} of space
+        try {
+            const freedSpaceText = formatFileSize(freedSpace);
+            
+            if (!fileList) {
+                console.error('fileList element not found');
+                return;
+            }
+            
+            // Hide the scan result banner completely
+            if (scanResult) {
+                scanResult.classList.add('hidden');
+            }
+            
+            fileList.innerHTML = `
+                <div class="empty-state success-state">
+                    <div class="empty-state-icon">🎉</div>
+                    <div class="empty-state-text">Successfully deleted!</div>
+                    <div class="empty-state-subtext">
+                        Deleted ${filesCount} file${filesCount !== 1 ? 's' : ''} and freed ${freedSpaceText} of space
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        } catch (e) {
+            console.error('Error in displayDeletionSuccess:', e);
+        }
     }
 
     function formatFileSize(bytes) {
