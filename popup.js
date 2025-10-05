@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const extensionInput = document.getElementById('extension-input');
     const addExtensionBtn = document.getElementById('add-extension');
     const extensionsList = document.getElementById('extensions-list');
+    const autoScanEnabled = document.getElementById('auto-scan-enabled');
 
     if (!scanButton || !fileList || !scanResult || !timeValue || !timeUnit) {
         console.error('Required elements not found');
@@ -20,15 +21,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load saved settings
     loadSettings();
-    
-    // Update auto-scan status display
-    updateAutoScanStatus();
 
-    // Save settings when changed
-    timeValue.addEventListener('change', saveSettings);
+    // Save settings when changed with validation
+    timeValue.addEventListener('change', function() {
+        validateAndSaveSettings(this, 1, 999);
+    });
     timeUnit.addEventListener('change', saveSettings);
-    if (scanFrequency) scanFrequency.addEventListener('change', saveSettings);
+    
+    if (scanFrequency) {
+        scanFrequency.addEventListener('change', function() {
+            validateAndSaveSettings(this, 1, 999);
+        });
+    }
     if (scanUnit) scanUnit.addEventListener('change', saveSettings);
+
+    // Auto-scan toggle
+    if (autoScanEnabled) {
+        autoScanEnabled.addEventListener('change', saveSettings);
+    }
 
     // Extensions management
     if (addExtensionBtn) {
@@ -49,11 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
     scanButton.addEventListener('click', () => scanOldDownloads(true)); // Force fresh scan
 
     function loadSettings() {
-        chrome.storage.local.get(['timeValue', 'timeUnit', 'scanFrequency', 'scanUnit', 'excludedExtensions'], function(result) {
+        chrome.storage.local.get(['timeValue', 'timeUnit', 'scanFrequency', 'scanUnit', 'excludedExtensions', 'autoScanEnabled'], function(result) {
             if (result.timeValue) timeValue.value = result.timeValue;
             if (result.timeUnit) timeUnit.value = result.timeUnit;
             if (scanFrequency && result.scanFrequency) scanFrequency.value = result.scanFrequency;
             if (scanUnit && result.scanUnit) scanUnit.value = result.scanUnit;
+            if (autoScanEnabled) autoScanEnabled.checked = result.autoScanEnabled !== false; // Default to true
             if (result.excludedExtensions && extensionsList) {
                 result.excludedExtensions.forEach(ext => {
                     addExtensionTag(ext);
@@ -70,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (scanFrequency) settings.scanFrequency = scanFrequency.value;
         if (scanUnit) settings.scanUnit = scanUnit.value;
+        if (autoScanEnabled) settings.autoScanEnabled = autoScanEnabled.checked;
         
         if (extensionsList) {
             const excludedExtensions = Array.from(extensionsList.querySelectorAll('.extension-tag'))
@@ -78,11 +90,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         chrome.storage.local.set(settings);
-        
-        // Update auto-scan status display when frequency changes
-        if (settings.scanFrequency || settings.scanUnit) {
-            updateAutoScanStatus();
-        }
     }
 
     function addExtension() {
@@ -539,19 +546,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return truncatedName + extension;
     }
 
-    function updateAutoScanStatus() {
-        const statusElement = document.getElementById('auto-scan-status');
-        if (!statusElement) return;
+    function validateAndSaveSettings(input, min, max) {
+        let value = parseInt(input.value);
         
-        chrome.storage.local.get(['scanFrequency', 'scanUnit'], (result) => {
-            const frequency = result.scanFrequency || 1;
-            const unit = result.scanUnit || 'days';
-            const unitText = frequency === 1 ? unit.slice(0, -1) : unit; // Remove 's' for singular
-            
-            statusElement.querySelector('.status-text').textContent = `Auto-scan: every ${frequency} ${unitText}`;
-        });
+        // Проверяем на корректность и границы
+        if (isNaN(value) || value < min) {
+            value = min;
+            input.value = value;
+        } else if (value > max) {
+            value = max;
+            input.value = value;
+        }
+        
+        // Сохраняем настройки после валидации
+        saveSettings();
     }
 
-    // Initial scan on popup open (use cache if available)
-    scanOldDownloads(false);
+    // Clear badge when popup opens (user is now aware of files)
+    chrome.runtime.sendMessage({ action: 'clearBadge' });
 });

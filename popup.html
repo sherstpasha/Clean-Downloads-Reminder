@@ -14,8 +14,16 @@
 
         <div class="settings-section">
             <div class="settings-header-row">
-                <h3>Settings</h3>
                 <div class="settings-inline">
+                    <div class="setting-group">
+                        <label>Auto-scan:</label>
+                        <div class="compact-input">
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="auto-scan-enabled" checked>
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="setting-group">
                         <label>Delete older than:</label>
                         <div class="compact-input">
@@ -30,8 +38,9 @@
                     <div class="setting-group">
                         <label>Scan every:</label>
                         <div class="compact-input">
-                            <input type="number" id="scan-frequency" min="1" value="1" max="30">
+                            <input type="number" id="scan-frequency" min="1" value="1" max="999">
                             <select id="scan-unit">
+                                <option value="minutes">min</option>
                                 <option value="hours">hrs</option>
                                 <option value="days" selected>days</option>
                             </select>
@@ -53,15 +62,10 @@
         </div>
 
         <div class="scan-section">
-            <div class="scan-controls">
-                <button id="scan-button" class="scan-btn">
-                    <span class="btn-text">Refresh Scan</span>
-                    <div class="spinner hidden"></div>
-                </button>
-                <div class="auto-scan-status" id="auto-scan-status">
-                    <span class="status-text">Auto-scan: every 1 day</span>
-                </div>
-            </div>
+            <button id="scan-button" class="scan-btn">
+                <span class="btn-text">Refresh Scan</span>
+                <div class="spinner hidden"></div>
+            </button>
             <div id="scan-result" class="scan-result hidden"></div>
         </div>
 

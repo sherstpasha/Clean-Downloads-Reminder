@@ -6,7 +6,6 @@
   "permissions": [
     "downloads",
     "storage",
-    "notifications",
     "alarms"
   ],
   "background": {

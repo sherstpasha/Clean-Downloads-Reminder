@@ -1,43 +1,40 @@
 // Background script for Clean Downloads Reminder
-console.log('Clean Downloads Reminder background script loaded');
 
 let cachedScanResults = null;
 let lastScanTime = null;
 
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('Clean Downloads Reminder extension installed/updated');
     setupAutoScan();
+    
+    // Perform initial scan after short delay
+    setTimeout(() => {
+        performBackgroundScan();
+    }, 5000); // 5 seconds delay
 });
 
 chrome.runtime.onStartup.addListener(() => {
     setupAutoScan();
 });
 
-// Handle notification clicks
-chrome.notifications.onClicked.addListener((notificationId) => {
-    if (notificationId === 'old-files-found') {
-        chrome.action.openPopup();
-    }
-});
-
-chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
-    if (notificationId === 'old-files-found') {
-        if (buttonIndex === 0) { // "Open Extension" button
-            chrome.action.openPopup();
-        }
-        // Button 1 is "Dismiss" - just clear the notification
-        chrome.notifications.clear(notificationId);
-    }
-});
+// Badge is visible on extension icon - no need for click handlers
 
 function setupAutoScan() {
-    chrome.storage.local.get(['scanFrequency', 'scanUnit'], (result) => {
+    chrome.storage.local.get(['scanFrequency', 'scanUnit', 'autoScanEnabled'], (result) => {
+        // If auto-scan is disabled, clear existing alarm and return
+        if (result.autoScanEnabled === false) {
+            chrome.alarms.clear('auto-scan');
+            return;
+        }
+        
         const frequency = parseInt(result.scanFrequency) || 1;
         const unit = result.scanUnit || 'days';
         
         // Convert to minutes for chrome.alarms
         let intervalInMinutes;
         switch(unit) {
+            case 'minutes':
+                intervalInMinutes = frequency;
+                break;
             case 'hours':
                 intervalInMinutes = frequency * 60;
                 break;
@@ -54,7 +51,7 @@ function setupAutoScan() {
             periodInMinutes: intervalInMinutes
         });
         
-        console.log(`Auto-scan scheduled every ${frequency} ${unit} (${intervalInMinutes} minutes)`);
+
     });
 }
 
@@ -71,7 +68,6 @@ function performBackgroundScan() {
         
         chrome.downloads.search({}, (downloads) => {
             if (chrome.runtime.lastError) {
-                console.error('Error in background scan:', chrome.runtime.lastError);
                 return;
             }
             
@@ -97,9 +93,11 @@ function performBackgroundScan() {
             cachedScanResults = oldFiles;
             lastScanTime = Date.now();
             
-            // Show notification if files found
+            // Show badge if files found
             if (oldFiles.length > 0) {
-                showNotification(oldFiles.length);
+                showBadge(oldFiles.length);
+            } else {
+                clearBadge();
             }
         });
     });
@@ -118,23 +116,35 @@ function getThresholdInMs(value, unit) {
     }
 }
 
-function showNotification(fileCount) {
-    const message = fileCount === 1 
-        ? 'Found 1 old file in your downloads' 
-        : `Found ${fileCount} old files in your downloads`;
-    
-    chrome.notifications.create('old-files-found', {
-        type: 'basic',
-        iconUrl: 'icon48.png',
-        title: 'Clean Downloads Reminder',
-        message: message,
-        buttons: [{ title: 'Open Extension' }, { title: 'Dismiss' }]
+function showBadge(fileCount) {
+    // Set badge text
+    chrome.action.setBadgeText({
+        text: fileCount.toString()
     });
+    
+    // Set badge background color (yellow/orange)
+    chrome.action.setBadgeBackgroundColor({
+        color: '#FF6B35' // Orange color
+    });
+    
+    // Set title (tooltip) text
+    const message = fileCount === 1 
+        ? 'Found 1 old file in downloads' 
+        : `Found ${fileCount} old files in downloads`;
+    
+    chrome.action.setTitle({
+        title: message
+    });
+}
+
+function clearBadge() {
+    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setTitle({ title: 'Clean Downloads Reminder' });
 }
 
 // Listen for settings changes to update scan schedule
 chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'local' && (changes.scanFrequency || changes.scanUnit)) {
+    if (namespace === 'local' && (changes.scanFrequency || changes.scanUnit || changes.autoScanEnabled)) {
         setupAutoScan();
     }
 });
