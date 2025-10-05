@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Clean Downloads Reminder",
+  "version": "1.0",
+  "description": "Reminds users about old files in the downloads folder and offers to delete them.",
+  "permissions": [
+    "downloads",
+    "storage",
+    "notifications",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

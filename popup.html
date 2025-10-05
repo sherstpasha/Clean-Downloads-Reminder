@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Clean Downloads Reminder</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Clean Downloads</h1>
+            <p>Keep your downloads folder organized</p>
+        </header>
+
+        <div class="settings-section">
+            <div class="settings-header-row">
+                <h3>Settings</h3>
+                <div class="settings-inline">
+                    <div class="setting-group">
+                        <label>Delete older than:</label>
+                        <div class="compact-input">
+                            <input type="number" id="time-value" min="1" value="7" max="99">
+                            <select id="time-unit">
+                                <option value="minutes">min</option>
+                                <option value="hours">hrs</option>
+                                <option value="days" selected>days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label>Scan every:</label>
+                        <div class="compact-input">
+                            <input type="number" id="scan-frequency" min="1" value="1" max="30">
+                            <select id="scan-unit">
+                                <option value="hours">hrs</option>
+                                <option value="days" selected>days</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label>Excluded file extensions:</label>
+                <div class="extensions-container">
+                    <div class="extensions-input-with-tags" id="extensions-input-with-tags">
+                        <div class="extensions-tags" id="extensions-list"></div>
+                        <input type="text" id="extension-input" placeholder="Type extension and press Enter (e.g. pdf, jpg)">
+                        <button id="add-extension" class="add-extension-btn" type="button" title="Add extension">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scan-section">
+            <div class="scan-controls">
+                <button id="scan-button" class="scan-btn">
+                    <span class="btn-text">Refresh Scan</span>
+                    <div class="spinner hidden"></div>
+                </button>
+                <div class="auto-scan-status" id="auto-scan-status">
+                    <span class="status-text">Auto-scan: every 1 day</span>
+                </div>
+            </div>
+            <div id="scan-result" class="scan-result hidden"></div>
+        </div>
+
+        <div class="files-section">
+            <div id="file-list" class="file-list"></div>
+        </div>
+
+        <footer class="footer">
+            <a href="https://github.com/sherstpasha/Clean-Downloads-Reminder" target="_blank" class="footer-link">
+                Homepage: github.com/sherstpasha/Clean-Downloads-Reminder
+            </a>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
