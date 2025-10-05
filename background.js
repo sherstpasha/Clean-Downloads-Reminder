@@ -99,6 +99,15 @@ function performBackgroundScan() {
             } else {
                 clearBadge();
             }
+            
+            // Notify popup if it's open about the scan results
+            chrome.runtime.sendMessage({
+                action: 'backgroundScanComplete',
+                results: oldFiles,
+                timestamp: lastScanTime
+            }).catch(() => {
+                // Popup might not be open, that's okay
+            });
         });
     });
 }

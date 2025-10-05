@@ -654,6 +654,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Listen for background scan completion
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'backgroundScanComplete') {
+            // Update interface with new scan results
+            displayScanResult(message.results.length);
+            displayOldFiles(message.results);
+            
+            // Show that this is from background scan
+            if (message.results.length > 0) {
+                const resultElement = document.getElementById('scan-result');
+                if (resultElement) {
+                    resultElement.innerHTML += ` <span style="font-size: 11px; opacity: 0.7;">(auto-scanned just now)</span>`;
+                }
+            }
+            
+            // Briefly show scan animation to indicate refresh
+            if (scanButton && btnText && spinner) {
+                scanButton.classList.add('scanning');
+                btnText.textContent = 'Auto-scanning...';
+                spinner.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    scanButton.classList.remove('scanning');
+                    btnText.textContent = 'Refresh Scan';
+                    spinner.classList.add('hidden');
+                }, 1000);
+            }
+        }
+    });
+
     // Clear badge when popup opens (user is now aware of files)
     chrome.runtime.sendMessage({ action: 'clearBadge' });
 });
