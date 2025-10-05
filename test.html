@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Toggle Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container" style="margin: 20px; padding: 20px;">
+        <h2>Toggle Test</h2>
+        
+        <div class="auto-scan-left" style="margin: 20px 0;">
+            <span class="toggle-label">Auto-scan:</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="test-toggle" checked>
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button id="test-btn">Test Toggle State</button>
+            <p id="result">Toggle is: <span id="status">ON</span></p>
+        </div>
+    </div>
+    
+    <script>
+        const toggle = document.getElementById('test-toggle');
+        const status = document.getElementById('status');
+        const testBtn = document.getElementById('test-btn');
+        
+        function updateStatus() {
+            status.textContent = toggle.checked ? 'ON' : 'OFF';
+            status.style.color = toggle.checked ? 'green' : 'red';
+        }
+        
+        toggle.addEventListener('change', updateStatus);
+        testBtn.addEventListener('click', () => {
+            alert('Toggle state: ' + (toggle.checked ? 'ON' : 'OFF'));
+        });
+        
+        // Initial update
+        updateStatus();
+    </script>
+</body>
+</html>
